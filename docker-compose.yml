@@ -1,0 +1,21 @@
+# docker compose up --build
+# http://localhost:8080
+
+services:
+  edumon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: edumon-app
+    env_file:
+      - "Backend Edumon/.env"
+    environment:
+      NODE_ENV: production
+    ports:
+      - "8080:80"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
