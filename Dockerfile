@@ -3,17 +3,16 @@
 # Todo en un contenedor: nginx (frontend, único puerto expuesto), backend
 # Node y MongoDB local, orquestados con supervisord.
 #
-# Build context: raíz "Proyecto Edumon" (contiene "Backend Edumon/" y
-# "Edumon-Repositorio-nuevo/").
+# Build context: raíz del repo (contiene "Backend/" y "Frontend/").
 
 FROM node:22-bookworm-slim AS frontend-build
 WORKDIR /frontend
 
-COPY ["Edumon-Repositorio-nuevo/package.json", "Edumon-Repositorio-nuevo/package-lock.json", "./"]
+COPY ["Frontend/package.json", "Frontend/package-lock.json", "./"]
 # Lockfile generado en Windows, npm/cli#4828 con el binario de Rollup en Linux
 RUN rm -f package-lock.json && npm install
 
-COPY Edumon-Repositorio-nuevo/ ./
+COPY Frontend/ ./
 
 ARG VITE_FIREBASE_VAPID_KEY=""
 ENV VITE_API_URL=/api
@@ -24,7 +23,7 @@ RUN npm run build
 FROM node:22-bookworm-slim AS backend-deps
 WORKDIR /backend
 
-COPY ["Backend Edumon/package.json", "Backend Edumon/package-lock.json", "./"]
+COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
 RUN npm ci --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
@@ -41,9 +40,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN mkdir -p /data/db && chown -R mongodb:mongodb /data/db
 
+# almacenamiento local de archivos subidos (fotos, adjuntos, APK).
+# Debe montarse un volumen persistente en /data/uploads.
+ENV UPLOAD_DIR=/data/uploads
+RUN mkdir -p /data/uploads && chown -R node:node /data/uploads
+
 COPY --from=backend-deps /backend/node_modules /backend/node_modules
-COPY ["Backend Edumon/package.json", "/backend/package.json"]
-COPY ["Backend Edumon/src", "/backend/src"]
+COPY ["Backend/package.json", "/backend/package.json"]
+COPY ["Backend/src", "/backend/src"]
 RUN chown -R node:node /backend
 
 RUN rm -f /etc/nginx/sites-enabled/default
