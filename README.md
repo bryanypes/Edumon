@@ -29,7 +29,13 @@ cp "Backend/.env.example" "Backend/.env"
 docker compose up --build
 ```
 
-Abrir `http://localhost:8080`. El backend y MongoDB no se exponen fuera del contenedor.
+Abrir `http://localhost:8095`. El backend y MongoDB no se exponen fuera del contenedor.
+
+Edumon corre como servicio Docker independiente, separado del stack de NOVA_FT/PQRS_SYS
+(no es una subruta de `nova.uniautonoma.edu.co`). En el servidor se publica en su propio
+puerto (`8095` por defecto, configurable con la variable de entorno `EDUMON_PORT`) y se
+expone por su propio dominio (`edumon.uniautonoma.edu.co`) vía un vhost del nginx del
+sistema — ver `docker/edumon.nginx-site.conf.example`.
 
 ## Actualizar los submódulos
 
