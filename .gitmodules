@@ -1,8 +1,8 @@
-[submodule "Backend Edumon"]
-	path = Backend Edumon
+[submodule "Backend"]
+	path = Backend
 	url = https://github.com/BryanDYepes/Backend-Edumon.git
 	branch = master
-[submodule "Edumon-Repositorio-nuevo"]
-	path = Edumon-Repositorio-nuevo
+[submodule "Frontend"]
+	path = Frontend
 	url = https://github.com/vXro1/Edumon-Repositorio-nuevo.git
 	branch = refactor/design-system

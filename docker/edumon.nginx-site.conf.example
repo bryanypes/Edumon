@@ -1,0 +1,59 @@
+# Plantilla de vhost para el nginx DEL SISTEMA (fuera de Docker) en
+# labsoft@softlab — NO se copia automáticamente, es solo referencia.
+#
+# Mismo patrón que /etc/nginx/sites-available/nova.conf (que termina SSL para
+# nova.uniautonoma.edu.co y reenvía a 127.0.0.1:8080, el contenedor de NOVA_FT):
+# este vhost hace lo mismo para edumon.uniautonoma.edu.co pero apuntando al
+# puerto propio de Edumon (8095, ver Edumon/docker-compose.yml). Edumon corre
+# como stack Docker completamente aparte, no como subruta dentro de
+# NOVA_FT/nginx.conf.
+#
+# Instalación en el servidor:
+#   sudo cp edumon.nginx-site.conf.example /etc/nginx/sites-available/edumon.conf
+#   # completar las rutas de certificado (ej. certbot --nginx -d edumon.uniautonoma.edu.co)
+#   sudo ln -s /etc/nginx/sites-available/edumon.conf /etc/nginx/sites-enabled/edumon.conf
+#   sudo nginx -t && sudo systemctl reload nginx
+
+server {
+    listen 80;
+    server_name edumon.uniautonoma.edu.co;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name edumon.uniautonoma.edu.co;
+
+    ssl_certificate     /etc/letsencrypt/live/edumon.uniautonoma.edu.co/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/edumon.uniautonoma.edu.co/privkey.pem;
+
+    # el APK y adjuntos pueden llegar a ~200 MB (ver client_max_body_size en
+    # Edumon/docker/nginx-edumon.conf, dentro del contenedor)
+    client_max_body_size 210m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8095;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    # WebSocket (Socket.io) — misma conexión de arriba necesita soportar
+    # el upgrade explícito, si no la notificación en tiempo real se queda
+    # en long-polling.
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:8095;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}
