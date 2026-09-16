@@ -33,14 +33,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
 # npm ci normal (el binario roto se instala igual, no falla el install).
-# node-addon-api/node-gyp no estan en el package.json del backend. sharp
-# verifica que esten *declarados* en el package.json consumidor (no solo
-# presentes en node_modules), por eso se guardan con --save (solo en esta
-# imagen, no toca el package.json del repo).
+# node-addon-api/node-gyp no estan en el package.json del backend. sharp los
+# resuelve con require() en su propio install script, por eso deben quedar
+# en node_modules antes de forzar el rebuild.
 ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
-RUN npm ci --omit=dev \
-    && npm install --save node-addon-api node-gyp \
-    && npm rebuild --build-from-source sharp
+RUN npm ci --omit=dev
+RUN npm install --save node-addon-api node-gyp
+RUN node -e "console.log('node-addon-api en', require.resolve('node-addon-api'))"
+RUN npm rebuild --build-from-source sharp
 
 FROM node:22-bookworm-slim AS runtime
 
