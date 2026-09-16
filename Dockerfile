@@ -91,6 +91,6 @@ ENV NODE_ENV=production
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -fsS http://127.0.0.1/health || exit 1
+  CMD curl -fsS http://127.0.0.1/health/backend || exit 1
 
 CMD ["supervisord", "-n", "-c", "/etc/supervisor/conf.d/edumon.conf"]
