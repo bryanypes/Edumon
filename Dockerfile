@@ -32,11 +32,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
-# --omit=optional excluye el binario precompilado de sharp (optionalDependency
-# del propio paquete): sin él, su install script compila contra el libvips
-# del sistema en vez de usar el prebuilt que exige CPU v2.
+# npm ci normal (node-addon-api, necesario para compilar sharp, es opcional
+# igual que el binario roto — con --omit=optional se pierden los dos).
+# Después se fuerza el rebuild de sharp contra el libvips del sistema en vez
+# del binario precompilado que exige CPU v2.
 ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
-RUN npm ci --omit=dev --omit=optional
+RUN npm ci --omit=dev \
+    && npm rebuild --build-from-source sharp
 
 FROM node:22-bookworm-slim AS runtime
 
