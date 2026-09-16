@@ -33,12 +33,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
 # npm ci normal (el binario roto se instala igual, no falla el install).
-# node-addon-api/node-gyp no estan en el package.json del backend (no se
-# necesitan para el binario precompilado) asi que se instalan aparte para
-# poder compilar sharp desde source contra el libvips del sistema.
+# node-addon-api/node-gyp no estan en el package.json del backend. sharp
+# verifica que esten *declarados* en el package.json consumidor (no solo
+# presentes en node_modules), por eso se guardan con --save (solo en esta
+# imagen, no toca el package.json del repo).
 ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
 RUN npm ci --omit=dev \
-    && npm install --no-save node-addon-api node-gyp \
+    && npm install --save node-addon-api node-gyp \
     && npm rebuild --build-from-source sharp
 
 FROM node:22-bookworm-slim AS runtime
