@@ -23,27 +23,14 @@ RUN npm run build
 FROM node:22-bookworm-slim AS backend-deps
 WORKDIR /backend
 
-# El binario precompilado de sharp exige CPU x86-64-v2 (SSE4.2) y crashea con
-# "Unsupported CPU" en el servidor (hardware antiguo, sin ese set de
-# instrucciones) — se compila contra el libvips del sistema (paquete Debian,
-# sin ese requisito) en lugar de usar el binario que trae sharp.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3 make g++ pkg-config libvips-dev \
-    && rm -rf /var/lib/apt/lists/*
-
+# sharp ^0.32.6: la 0.33+ trae binarios precompilados que exigen CPU x86-64-v2
+# (SSE4.2) y crashean con "Unsupported CPU" en este servidor (hardware
+# antiguo). La 0.32.x no tiene ese requisito, usa el binario precompilado tal
+# cual. Se fuerza aqui (sin tocar el repo del Backend, sin permisos de push
+# ahi) en vez de en package.json; "npm install" en vez de "npm ci" porque el
+# lockfile no tiene la version forzada.
 COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
-# npm ci normal (el binario roto se instala igual, no falla el install).
-# node-addon-api/node-gyp no estan en el package.json del backend. sharp los
-# resuelve con require() en su propio install script, por eso deben quedar
-# en node_modules antes de forzar el rebuild.
-# ENV SHARP_FORCE_GLOBAL_LIBVIPS va DESPUES de instalar node-addon-api: si se
-# activa antes, sharp intenta compilar ya durante "npm ci" (sin node-addon-api
-# todavia disponible) y falla ahi mismo.
-RUN npm ci --omit=dev
-RUN npm install --save node-addon-api node-gyp
-ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
-RUN node -e "console.log('node-addon-api en', require.resolve('node-addon-api'))"
-RUN npm rebuild --build-from-source sharp
+RUN npm pkg set dependencies.sharp="^0.32.6" && npm install --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
 
@@ -59,10 +46,8 @@ FROM node:22-bookworm-slim AS runtime
 # (solo libssl3). Los repos "-security" de Debian ya EOL (bullseye/buster) no
 # tienen espejo fiable en archive.debian.org, así que se baja el .deb directo
 # del archivo permanente de Ubuntu (old-releases.ubuntu.com) y se instala con dpkg.
-# libvips-dev también aquí: sharp quedó enlazado dinámicamente contra él en el
-# stage anterior, la lib debe estar presente en runtime para poder cargarla.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl gnupg ca-certificates nginx supervisor libvips-dev \
+      curl gnupg ca-certificates nginx supervisor \
     && DEB_BASE="http://old-releases.ubuntu.com/ubuntu/pool/main/o/openssl" \
     && DEB_FILE=$(curl -fsSL "$DEB_BASE/" | grep -o 'libssl1\.1_[^"]*_amd64\.deb' | sort -V | tail -1) \
     && curl -fsSL -o /tmp/libssl1.1.deb "$DEB_BASE/$DEB_FILE" \
