@@ -23,8 +23,20 @@ RUN npm run build
 FROM node:22-bookworm-slim AS backend-deps
 WORKDIR /backend
 
+# El binario precompilado de sharp exige CPU x86-64-v2 (SSE4.2) y crashea con
+# "Unsupported CPU" en el servidor (hardware antiguo, sin ese set de
+# instrucciones) — se compila contra el libvips del sistema (paquete Debian,
+# sin ese requisito) en lugar de usar el binario que trae sharp.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 make g++ pkg-config libvips-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
-RUN npm ci --omit=dev
+# --omit=optional excluye el binario precompilado de sharp (optionalDependency
+# del propio paquete): sin él, su install script compila contra el libvips
+# del sistema en vez de usar el prebuilt que exige CPU v2.
+ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
+RUN npm ci --omit=dev --omit=optional
 
 FROM node:22-bookworm-slim AS runtime
 
@@ -33,13 +45,22 @@ FROM node:22-bookworm-slim AS runtime
 # Sin paquete "bookworm" oficial para 4.4, se usa el repo "buster" (compatible).
 # mongodb-org-server 4.4 enlaza contra libssl1.1, que bookworm ya no trae
 # (solo libssl3) — se instala desde el repo de seguridad de bullseye.
+# MongoDB 4.4: la 5.0+ requiere CPU con AVX y crashea con SIGILL en servidores
+# sin ese set de instrucciones (VPS/hardware antiguo). 4.4 no tiene ese requisito.
+# Sin paquete "bookworm" oficial para 4.4, se usa el repo "buster" (compatible).
+# mongodb-org-server 4.4 enlaza contra libssl1.1, que bookworm ya no trae
+# (solo libssl3). Los repos "-security" de Debian ya EOL (bullseye/buster) no
+# tienen espejo fiable en archive.debian.org, así que se baja el .deb directo
+# del archivo permanente de Ubuntu (old-releases.ubuntu.com) y se instala con dpkg.
+# libvips-dev también aquí: sharp quedó enlazado dinámicamente contra él en el
+# stage anterior, la lib debe estar presente en runtime para poder cargarla.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl gnupg ca-certificates nginx supervisor \
-    && echo "deb http://deb.debian.org/debian-security bullseye-security main" \
-       > /etc/apt/sources.list.d/bullseye-security.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends libssl1.1 \
-    && rm -f /etc/apt/sources.list.d/bullseye-security.list \
+      curl gnupg ca-certificates nginx supervisor libvips-dev \
+    && DEB_BASE="http://old-releases.ubuntu.com/ubuntu/pool/main/o/openssl" \
+    && DEB_FILE=$(curl -fsSL "$DEB_BASE/" | grep -o 'libssl1\.1_[^"]*_amd64\.deb' | sort -V | tail -1) \
+    && curl -fsSL -o /tmp/libssl1.1.deb "$DEB_BASE/$DEB_FILE" \
+    && dpkg -i /tmp/libssl1.1.deb \
+    && rm -f /tmp/libssl1.1.deb \
     && curl -fsSL https://pgp.mongodb.com/server-4.4.asc \
        | gpg --dearmor -o /usr/share/keyrings/mongodb-server-4.4.gpg \
     && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-4.4.gpg ] https://repo.mongodb.org/apt/debian buster/mongodb-org/4.4 main" \
