@@ -32,12 +32,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
-# npm ci normal (node-addon-api, necesario para compilar sharp, es opcional
-# igual que el binario roto — con --omit=optional se pierden los dos).
-# Después se fuerza el rebuild de sharp contra el libvips del sistema en vez
-# del binario precompilado que exige CPU v2.
+# npm ci normal (el binario roto se instala igual, no falla el install).
+# node-addon-api/node-gyp no estan en el package.json del backend (no se
+# necesitan para el binario precompilado) asi que se instalan aparte para
+# poder compilar sharp desde source contra el libvips del sistema.
 ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
 RUN npm ci --omit=dev \
+    && npm install --no-save node-addon-api node-gyp \
     && npm rebuild --build-from-source sharp
 
 FROM node:22-bookworm-slim AS runtime
