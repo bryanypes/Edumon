@@ -36,9 +36,12 @@ COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
 # node-addon-api/node-gyp no estan en el package.json del backend. sharp los
 # resuelve con require() en su propio install script, por eso deben quedar
 # en node_modules antes de forzar el rebuild.
-ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
+# ENV SHARP_FORCE_GLOBAL_LIBVIPS va DESPUES de instalar node-addon-api: si se
+# activa antes, sharp intenta compilar ya durante "npm ci" (sin node-addon-api
+# todavia disponible) y falla ahi mismo.
 RUN npm ci --omit=dev
 RUN npm install --save node-addon-api node-gyp
+ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
 RUN node -e "console.log('node-addon-api en', require.resolve('node-addon-api'))"
 RUN npm rebuild --build-from-source sharp
 
