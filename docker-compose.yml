@@ -1,5 +1,10 @@
 # docker compose up --build
-# http://localhost:8080
+# http://localhost:8095
+#
+# Puerto de host 8095 a propósito: 8080 ya lo usa el stack raíz de NOVA_FT
+# (docker-compose.yml en la raíz del repo) en el mismo servidor — Edumon es
+# un servicio Docker totalmente aparte, no una subruta de nova.uniautonoma.edu.co,
+# así que necesita su propio puerto para no chocar.
 
 services:
   edumon:
@@ -12,7 +17,7 @@ services:
     environment:
       NODE_ENV: production
     ports:
-      - "8080:80"
+      - "${EDUMON_PORT:-8095}:80"
     volumes:
       - mongo-data:/data/db
       - uploads-data:/data/uploads

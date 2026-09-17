@@ -23,17 +23,40 @@ RUN npm run build
 FROM node:22-bookworm-slim AS backend-deps
 WORKDIR /backend
 
+# sharp ^0.32.6: la 0.33+ trae binarios precompilados que exigen CPU x86-64-v2
+# (SSE4.2) y crashean con "Unsupported CPU" en este servidor (hardware
+# antiguo). La 0.32.x no tiene ese requisito, usa el binario precompilado tal
+# cual. Se fuerza aqui (sin tocar el repo del Backend, sin permisos de push
+# ahi) en vez de en package.json; "npm install" en vez de "npm ci" porque el
+# lockfile no tiene la version forzada.
 COPY ["Backend/package.json", "Backend/package-lock.json", "./"]
-RUN npm ci --omit=dev
+RUN npm pkg set dependencies.sharp="^0.32.6" && npm install --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
 
+# MongoDB 4.4: la 5.0+ requiere CPU con AVX y crashea con SIGILL en servidores
+# sin ese set de instrucciones (VPS/hardware antiguo). 4.4 no tiene ese requisito.
+# Sin paquete "bookworm" oficial para 4.4, se usa el repo "buster" (compatible).
+# mongodb-org-server 4.4 enlaza contra libssl1.1, que bookworm ya no trae
+# (solo libssl3) — se instala desde el repo de seguridad de bullseye.
+# MongoDB 4.4: la 5.0+ requiere CPU con AVX y crashea con SIGILL en servidores
+# sin ese set de instrucciones (VPS/hardware antiguo). 4.4 no tiene ese requisito.
+# Sin paquete "bookworm" oficial para 4.4, se usa el repo "buster" (compatible).
+# mongodb-org-server 4.4 enlaza contra libssl1.1, que bookworm ya no trae
+# (solo libssl3). Los repos "-security" de Debian ya EOL (bullseye/buster) no
+# tienen espejo fiable en archive.debian.org, así que se baja el .deb directo
+# del archivo permanente de Ubuntu (old-releases.ubuntu.com) y se instala con dpkg.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl gnupg ca-certificates nginx supervisor \
-    && curl -fsSL https://pgp.mongodb.com/server-7.0.asc \
-       | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg \
-    && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" \
-       > /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && DEB_BASE="http://old-releases.ubuntu.com/ubuntu/pool/main/o/openssl" \
+    && DEB_FILE=$(curl -fsSL "$DEB_BASE/" | grep -o 'libssl1\.1_[^"]*_amd64\.deb' | sort -V | tail -1) \
+    && curl -fsSL -o /tmp/libssl1.1.deb "$DEB_BASE/$DEB_FILE" \
+    && dpkg -i /tmp/libssl1.1.deb \
+    && rm -f /tmp/libssl1.1.deb \
+    && curl -fsSL https://pgp.mongodb.com/server-4.4.asc \
+       | gpg --dearmor -o /usr/share/keyrings/mongodb-server-4.4.gpg \
+    && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-4.4.gpg ] https://repo.mongodb.org/apt/debian buster/mongodb-org/4.4 main" \
+       > /etc/apt/sources.list.d/mongodb-org-4.4.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends mongodb-org-server \
     && rm -rf /var/lib/apt/lists/*
