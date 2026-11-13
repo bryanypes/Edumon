@@ -1,46 +1,48 @@
 # Edumon
 
-Plataforma de gestión escolar. Este repo une el frontend y el backend como submódulos y agrega el Dockerfile/compose para levantar todo en un solo contenedor.
+Plataforma de gestión escolar que conecta instituciones, docentes y familias. Este repositorio une la API y la web como submódulos y contiene el despliegue en Docker.
 
-## Estructura
+## Repositorios
 
-- `Backend/` — API REST (Node/Express + MongoDB). [Repo](https://github.com/BryanDYepes/Backend-Edumon)
-- `Frontend/` — Frontend (Vite + React). [Repo](https://github.com/vXro1/Edumon-Repositorio-nuevo)
-- `Dockerfile` / `docker-compose.yml` / `docker/` — imagen única: nginx (frontend) + backend + MongoDB local. Los archivos subidos (fotos, adjuntos, APK) se guardan en el volumen `uploads-data`.
+| Carpeta | Contenido |
+| --- | --- |
+| `Backend/` | API REST (Node.js, Express, MongoDB). [Repositorio](https://github.com/BryanDYepes/Backend-Edumon) |
+| `Frontend/` | Aplicación web (React, Vite). [Repositorio](https://github.com/vXro1/EDUMON-WEB-) |
+| `Dockerfile`, `docker-compose.yml`, `docker/` | Imagen única con nginx (web), backend y MongoDB |
 
-## Clonar
+La app Android está en un repositorio aparte (`Edumonmovil_flutter`).
+
+## Requisitos
+
+- Git
+- Docker con Docker Compose (despliegue) o Node.js 22 y MongoDB (desarrollo de cada submódulo)
+
+## Instalación
 
 ```bash
 git clone --recurse-submodules https://github.com/bryanypes/Edumon.git
-```
-
-Si ya lo clonaste sin `--recurse-submodules`:
-
-```bash
-git submodule update --init --recursive
-```
-
-## Levantar todo con Docker
-
-```bash
-cp "Backend/.env.example" "Backend/.env"
-# completar JWT_SECRET, SMTP_* (correo) y FIREBASE_* (push) en ese .env
-
+cd Edumon
+cp Backend/.env.example Backend/.env   # completar JWT_SECRET y, si aplica, SMTP_* y FIREBASE_*
 docker compose up --build
 ```
 
-Abrir `http://localhost:8095`. El backend y MongoDB no se exponen fuera del contenedor.
+La aplicación queda en `http://localhost:8095`; el backend y MongoDB no se exponen fuera del contenedor. Para desarrollar cada parte por separado, ver el README de `Backend/` y `Frontend/`.
 
-Edumon corre como servicio Docker independiente, separado del stack de NOVA_FT/PQRS_SYS
-(no es una subruta de `nova.uniautonoma.edu.co`). En el servidor se publica en su propio
-puerto (`8095` por defecto, configurable con la variable de entorno `EDUMON_PORT`) y se
-expone por su propio dominio (`edumon.uniautonoma.edu.co`) vía un vhost del nginx del
-sistema — ver `docker/edumon.nginx-site.conf.example`.
+Si se clonó sin `--recurse-submodules`: `git submodule update --init --recursive`.
+
+## Variables de entorno
+
+- `Backend/.env`: ver `Backend/.env.example`.
+- `EDUMON_PORT`: puerto publicado por `docker compose` (por defecto `8095`).
+
+## Despliegue
+
+En el servidor, Edumon corre como servicio Docker propio en `EDUMON_PORT` y se publica en `edumon.uniautonoma.edu.co` mediante un vhost del nginx del sistema (`docker/edumon.nginx-site.conf.example`).
 
 ## Actualizar los submódulos
 
 ```bash
 git submodule update --remote
 git add Backend Frontend
-git commit -m "actualiza submódulos"
+git commit -m "chore: actualizar submódulos"
 ```
