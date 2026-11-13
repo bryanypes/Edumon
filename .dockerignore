@@ -2,7 +2,6 @@
 **/.git
 **/.github
 **/.vscode
-**/.claude
 **/.playwright-mcp
 **/dist
 **/.next
