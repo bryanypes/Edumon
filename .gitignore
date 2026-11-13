@@ -4,4 +4,8 @@ node_modules
 !.env.example
 *.log
 .vscode
-.claude
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
