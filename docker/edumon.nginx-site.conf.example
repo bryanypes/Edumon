@@ -1,12 +1,9 @@
-# Plantilla de vhost para el nginx DEL SISTEMA (fuera de Docker) en
-# labsoft@softlab — NO se copia automáticamente, es solo referencia.
+# Plantilla de vhost para el nginx del sistema (fuera de Docker) en el
+# servidor. No se copia sola, es solo referencia.
 #
-# Mismo patrón que /etc/nginx/sites-available/nova.conf (que termina SSL para
-# nova.uniautonoma.edu.co y reenvía a 127.0.0.1:8080, el contenedor de NOVA_FT):
-# este vhost hace lo mismo para edumon.uniautonoma.edu.co pero apuntando al
-# puerto propio de Edumon (8095, ver Edumon/docker-compose.yml). Edumon corre
-# como stack Docker completamente aparte, no como subruta dentro de
-# NOVA_FT/nginx.conf.
+# Termina SSL para edumon.uniautonoma.edu.co y reenvía al puerto propio de
+# Edumon (8095, ver docker-compose.yml). Edumon corre como stack Docker
+# aparte, no como subruta de otro sitio del servidor.
 #
 # Instalación en el servidor:
 #   sudo cp edumon.nginx-site.conf.example /etc/nginx/sites-available/edumon.conf
