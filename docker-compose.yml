@@ -1,10 +1,9 @@
 # docker compose up --build
 # http://localhost:8095
 #
-# Puerto de host 8095 a propósito: 8080 ya lo usa el stack raíz de NOVA_FT
-# (docker-compose.yml en la raíz del repo) en el mismo servidor — Edumon es
-# un servicio Docker totalmente aparte, no una subruta de nova.uniautonoma.edu.co,
-# así que necesita su propio puerto para no chocar.
+# Puerto de host 8095 a propósito: 8080 ya está ocupado por otro servicio
+# del mismo servidor. Edumon es un servicio Docker aparte, no una subruta
+# de otro sitio, así que necesita su propio puerto.
 
 services:
   edumon:
