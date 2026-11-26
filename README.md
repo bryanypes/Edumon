@@ -2,6 +2,16 @@
 
 Plataforma de gestión escolar que conecta instituciones, docentes y familias. Este repositorio une la API y la web como submódulos y contiene el despliegue en Docker.
 
+| Dato | Valor |
+| --- | --- |
+| Programa | EDUMON — despliegue conjunto del programa web (registro A) |
+| Versión | 1.0.0 |
+| Commit | $Format:%H$ |
+| Fecha del commit | $Format:%cs$ |
+| Autores | Bryan David Yepes Ordóñez y Karen Verónica Mancilla Solarte |
+
+En una copia obtenida con `git archive` el commit y la fecha aparecen completos; en el repositorio se ven como marcadores.
+
 ## Repositorios
 
 | Carpeta | Contenido |
