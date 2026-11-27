@@ -32,6 +32,22 @@ jobs:
           docker volume inspect edumon_uploads_migrados >/dev/null
           docker network inspect siac-prod_default >/dev/null
 
+      - name: Backup MongoDB
+        run: |
+          set -euo pipefail
+          # La imagen de Edumon solo trae mongod (sin mongodump): el respaldo lo hace un
+          # contenedor mongo:4.4 temporal que comparte la red de edumon-app y llega a su
+          # mongod por 127.0.0.1. Si falla, el job se detiene y no se despliega.
+          docker inspect -f '{{.State.Running}}' edumon-app | grep -qx true
+          destino="/opt/edumon/backups/$(date +%Y-%m-%d_%H%M%S)"
+          mkdir -p "$destino"
+          docker run --rm --user "$(id -u):$(id -g)" --network container:edumon-app -v "$destino:/backup" mongo:4.4 \
+            mongodump --host 127.0.0.1 --port 27017 --gzip --archive=/backup/edumon.archive.gz
+          test -s "$destino/edumon.archive.gz"
+          echo "Respaldo en $destino ($(du -h "$destino/edumon.archive.gz" | cut -f1))"
+          # conserva los 14 respaldos más recientes
+          ls -1d /opt/edumon/backups/*/ | sort -r | tail -n +15 | xargs -r rm -rf
+
       - name: Build and start Edumon
         run: |
           docker compose -p edumon -f docker-compose.yml -f docker/docker-compose.production.yml build edumon
