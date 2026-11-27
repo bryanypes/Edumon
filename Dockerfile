@@ -10,7 +10,7 @@ WORKDIR /frontend
 
 COPY ["Frontend/package.json", "Frontend/package-lock.json", "./"]
 # Lockfile generado en Windows, npm/cli#4828 con el binario de Rollup en Linux
-RUN rm -f package-lock.json && npm install
+RUN npm install -g npm@11.6.0 && rm -f package-lock.json && npm install
 
 COPY Frontend/ ./
 
