@@ -1,0 +1,52 @@
+name: Deploy Edumon
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edumon-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, edumon-production]
+    timeout-minutes: 30
+    env:
+      EDUMON_BACKEND_ENV_FILE: /opt/edumon/Edumon/Backend/.env
+    steps:
+      - name: Checkout deployment commit and submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Validate production configuration
+        run: |
+          docker compose -p edumon -f docker-compose.yml -f docker/docker-compose.production.yml config --quiet
+          docker volume inspect edumon_mongo-data >/dev/null
+          docker volume inspect edumon_uploads_migrados >/dev/null
+          docker network inspect siac-prod_default >/dev/null
+
+      - name: Build and start Edumon
+        run: |
+          docker compose -p edumon -f docker-compose.yml -f docker/docker-compose.production.yml build edumon
+          docker compose -p edumon -f docker-compose.yml -f docker/docker-compose.production.yml up -d --no-deps --no-build --wait --wait-timeout 180 edumon
+
+      - name: Check backend and database
+        run: |
+          curl --fail --silent --show-error --max-time 10 http://127.0.0.1:8095/health/backend
+          docker exec --workdir /backend edumon-app node --input-type=module -e '
+          import mongoose from "mongoose";
+          try {
+            await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+            await mongoose.connection.db.admin().ping();
+            await mongoose.disconnect();
+          } catch (error) {
+            console.error("MongoDB health check failed:", error.message);
+            process.exit(1);
+          }'
