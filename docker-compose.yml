@@ -12,7 +12,7 @@ services:
       dockerfile: Dockerfile
     container_name: edumon-app
     env_file:
-      - "Backend/.env"
+      - "${EDUMON_BACKEND_ENV_FILE:-Backend/.env}"
     environment:
       NODE_ENV: production
     ports:

@@ -1,0 +1,18 @@
+services:
+  edumon:
+    networks:
+      - default
+      - siac-proxy
+
+volumes:
+  mongo-data:
+    external: true
+    name: edumon_mongo-data
+  uploads-data:
+    external: true
+    name: edumon_uploads_migrados
+
+networks:
+  siac-proxy:
+    external: true
+    name: siac-prod_default
